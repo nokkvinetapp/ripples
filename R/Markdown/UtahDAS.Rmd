@@ -1,0 +1,179 @@
+---
+title: "Testing"
+author: "Nokkvi Dan @NetApp"
+date: "5/19/2021"
+output: html_document
+---
+
+# About data:
+
+Monitoring: Silixa's Carina Sensing system
+Fiber optic cable: ConstellationTM fiber permanently cemented into well 78-32
+
+Well 78-32: 3274.48 feet (1200 feet into granitoid basement rocks)
+Dates: 04/14/2019 - 05/03/2019
+Silixa-data detected 40 microseismic events between -1.5 to 0.5 M
+
+version:    version of what ?
+data:       signal of each trace  [1:30000, 1:1088]
+traces:     traces
+depth:      depth                 (ns) [1:30000]
+pos:        position              (meters) [1:1088]
+time0:      the time at which the transmitter starts to emit the wave
+time:       time i+1 counter      (counter on depth)
+surveymode: reflection            "char"
+date:       "2019-04-19"
+
+
+## Code:
+
+```{r}
+library(RGPR)
+library(RSEIS)
+library(rgdal)
+library(tidyr)
+```
+
+# Importing data and subsetting
+
+## Importing
+
+```{r,warning=FALSE}
+# Path to our file
+Lname  <-  list.files(path='/Users/nokkvi/Git/SEGY', pattern="testdata", full.names=TRUE)
+
+#reading the .sgy file - day1
+gpr_data_day1 <- readGPR(Lname)
+```
+
+## Subset
+```{r}
+# Subsetting data so we have something to work with
+gpr_df <- gpr_data_day1[c(1:30),c(1:10)]
+```
+
+```{r}
+# function to change gpr_df to long format
+gpr_df_long <- function(gpr_df){
+  # taking the data
+  df <- as.data.frame(gpr_df@data)
+  
+  # changing in to long format
+  df_long <- gather(df, factor_key = TRUE)
+  
+  # setting parameters
+  r <- nrow(df)
+  c <- ncol(df)
+  k <- nrow(df_long)
+  
+  # adding depth to long format
+  df_long$depth <- rep(gpr_df@depth, times=c, each=1)
+  df_long
+}
+```
+
+```{r}
+# changing gpr_df -> gpr_df_long
+source <- gpr_df_long(gpr_df)
+```
+
+# Basic processing steps
+
+## Plot
+```{r}
+#if(!require("devtools")) install.packages("devtools")
+#devtools::install_github("emanuelhuber/RGPR")
+```
+
+```{r}
+# Plotting the whole dataset
+#plot(x)
+```
+
+## First wave break and time zero estimation
+
+**THE EASY WAY:** ´x <- estimateTime0(x, w = 20, method = "coppens", thr = 0.05, FUN = mean)`
+
+Here, we define time-zero, $t_0$ as the time at which the transmitter starts to emit the wave.
+
+Maybe is time zero not correctly set. To get the time-zero for each traces of x use the function time0().
+
+The first wave break $t_{fb}$ is estimated for each traces and it's the time of the first wave record:
+
+```{r}
+# time of the first wave record
+#tfb <- firstBreak(xx, w = 20, method = "coppens", thr = 0.05)
+# plot of tfb
+#plot(pos(xx), tfb, pch = 20, ylab = "first wave break", xlab = "position (m)")
+```
+
+Convert the first wave break time $t_{fb}$ into time zero $t_0$ with firstBreakToTime0(). In math it is $t_0 = t_{fb} - \frac{a}{c_0}$
+
+a= distance between transmitter and reciver
+$c_0$
+
+```{r}
+# creating a vectpr
+#t0 <- firstBreakToTime0(tfb, xx)
+
+# set time0
+#time0(xx) <- t0
+```
+
+Note:
+
+* If t0 is too noisy, you can set time0(x) = mean(t0)
+
+The change of setting time zero estimate
+
+```{r}
+#plot(x[,15], xlim = c(0, 10))  # plot the 15th trace of the GPR-line
+#abline(v = tfb[15], col = "blue")  # first wave break time
+```
+
+No change :).
+
+#### Plot a single trace
+
+```{r}
+# Plot all samples of the 15 trace of the GPR profile
+#plot(x[,15])
+# Plot the first 150 samples of the 15th trace of the GPR profile
+#plot(xx[,15])
+# plot the first 110 samples of the 15th trace of the GPR profile
+#plot(x[1:110, 15])
+```
+
+```{r}
+#plot(x[1:20, 15])  # plot the 15th trace of the GPR-line
+# add a green horizontal line
+#abline(h = mean(x[1:110, 15]), col = "green")
+```
+
+## Time zero corrections
+
+```{r}
+#x2 <- time0Cor(xx, method = "pchip")
+#plot(x2)
+```
+## Dewow
+
+```{r}
+#x3 <- dewow(x2, type = "Gaussian", w=50)
+#plot(x3)
+
+#plot(x3 - x2) 
+
+#plot(x2[,15], col = "blue")      # before dewowing
+#lines(x3[,15], col = "red")      # after dewowing
+```
+## Frequency Filter
+
+Let's have a look at the amplitude-frequency and phase-frequency plot (the spectrum given by the Fourier decomposition):
+
+```{r}
+#spec1D(x3)
+#x4 <- fFilter(x3, f = c(150, 260), type = "low", plotSpec = TRUE)
+```
+
+
